@@ -1,0 +1,3 @@
+1.sentence.py实现按语法规则随机生成句子
+2.twogram.py实现一个二元语法模型，语料来自input文件夹下的影评数据
+3.best_sentence.py实现多个句子生成，并利用2gram模型计算橘子的困惑度，返回最佳句子
