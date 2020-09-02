@@ -13,12 +13,16 @@ class TwoGrams:
         self.wwfreq = defaultdict(int)  # 两个单词组合词频
         self.token_size = 0     # 单词总数
         self.token2_size = 0    # 二元组合个数
-        self.perplexity = 0     # 困惑度
-        self.prob = 0           # 联合概率
-        jieba.add_word('EOS')
-        jieba.add_word('BOS')
+        self.jieba = jieba
+        self.jieba.add_word('EOS')
+        self.jieba.add_word('BOS')
 
-    def _add_eosbos(self, text):
+    def add_dict(self, dict_path):
+        # 为结巴分词增加字典
+        self.jieba.load_userdict(dict_path)
+
+    @staticmethod
+    def _add_eosbos(text):
         text = str(text)
         text = 'BOS' + text
         text = text.replace('。', 'EOSBOS')
@@ -34,7 +38,7 @@ class TwoGrams:
     def train(self, sr):
         sr = sr.apply(self._add_eosbos)
         for text in sr:
-            word_list = list(jieba.cut(text))
+            word_list = list(self.jieba.cut(text))
             # print(word_list)
             size = len(word_list)
             for i in range(size - 1):
@@ -61,15 +65,39 @@ class TwoGrams:
         # print('{}{}={}'.format(w1,w2,p))
         return p
 
-    # 计算句子的概率和困惑度
+    #
     def prob_sentence(self, sentence):
-        word_list = list(jieba.cut('BOS' + sentence + 'EOS'))
+        """
+        计算句子的2元联合概率和困惑度
+        :param sentence: 未分词的整句
+        :return: 概率，困惑度。dtype=float,float
+        """
+        word_list = self.jieba.lcut('BOS' + sentence + 'EOS')
         size = len(word_list)
-        self.prob = 1
+        prob = 1
         for i in range(size - 1):
-            self.prob *= self.prob_2(word_list[i], word_list[i + 1])
-        self.perplexity = math.pow(self.prob, -1.0/(size-1))
-        return self.prob, self.perplexity
+            prob *= self.prob_2(word_list[i], word_list[i + 1])
+        perplexity = math.pow(prob, -1.0/(size-1))
+        return prob, perplexity
+
+    def calc_perplexity(self, tokens):
+        """
+        计算已分词的句子困惑度
+        :param tokens: 句子各词语按顺序排列
+        :return: 困惑度，dtype=float
+        """
+        if not isinstance(tokens, list):
+            raise TypeError("parameter must be list.")
+        word_list = tokens
+        word_list.insert(0, 'BOS')
+        word_list.append('BOS')
+        size = len(word_list)
+        prob = 1
+        for i in range(size - 1):
+            prob *= self.prob_2(word_list[i], word_list[i + 1])
+        perplexity = math.pow(prob, -1.0/(size-1))
+        return perplexity
+
 
 
 if __name__ == '__main__':
